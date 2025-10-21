@@ -11,13 +11,14 @@ from torch.utils.data import DataLoader, random_split
 from torchvision import models
 from dataset import SkinDataset
 from transformer import get_train_transforms, get_val_transforms
+from pathlib import Path
 
 
-def create_model(num_classes=7, pretrained=True):
+def create_model(num_classes=10, pretrained=True):
     """Create a ResNet18 model for skin disease classification."""
     model = models.resnet18(pretrained=pretrained)
     
-    # Replace final layer for our 7 classes
+    # Replace final layer for our classes
     num_features = model.fc.in_features
     model.fc = nn.Linear(num_features, num_classes)
     
@@ -91,12 +92,15 @@ def main():
     """Main training function."""
     
     print("\n" + "="*70)
-    print("🚀 SKIN DISEASE CLASSIFICATION TRAINING")
+    print("SKIN DISEASE CLASSIFICATION TRAINING")
     print("="*70)
     
-    # Configuration
-    CSV_PATH = "../data/metadata_final.csv"
-    IMG_DIR = "../data/images"
+    # Configuration (paths relative to repo root, robust to CWD)
+    repo_root = Path(__file__).resolve().parents[1]
+    CSV_PATH = str((repo_root / "data" / "expanded_with_athletes_foot.csv").resolve())
+    IMG_DIR = str((repo_root / "data" / "images").resolve())
+    NON_SKIN_DIR = str((repo_root / "data" / "non_skin").resolve())
+    DERMNET_DIR = str((repo_root / "data" / "dermnet_images").resolve())
     BATCH_SIZE = 32
     NUM_EPOCHS = 10
     LEARNING_RATE = 0.001
@@ -104,20 +108,24 @@ def main():
     
     # Device
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    print(f"\n📱 Device: {device}")
+    print(f"\nDevice: {device}")
     
     # Create datasets
-    print("\n📊 Loading datasets...")
+    print("\nLoading datasets...")
     train_dataset = SkinDataset(
         csv_path=CSV_PATH,
         img_dir=IMG_DIR,
-        transform=get_train_transforms()
+        transform=get_train_transforms(),
+        non_skin_dir=NON_SKIN_DIR,
+        dermnet_dir=DERMNET_DIR
     )
     
     val_dataset = SkinDataset(
         csv_path=CSV_PATH,
         img_dir=IMG_DIR,
-        transform=get_val_transforms()
+        transform=get_val_transforms(),
+        non_skin_dir=NON_SKIN_DIR,
+        dermnet_dir=DERMNET_DIR
     )
     
     # Split data
@@ -155,8 +163,8 @@ def main():
     )
     
     # Create model
-    print("\n🧠 Creating model (ResNet18)...")
-    model = create_model(num_classes=7, pretrained=True)
+    print("\nCreating model (ResNet18, 10 classes)...")
+    model = create_model(num_classes=10, pretrained=True)
     model = model.to(device)
     
     # Loss and optimizer
@@ -168,7 +176,7 @@ def main():
     
     # Training loop
     print("\n" + "="*70)
-    print("🏋️  TRAINING")
+    print("TRAINING")
     print("="*70)
     
     best_val_acc = 0.0
@@ -186,7 +194,7 @@ def main():
         val_loss, val_acc = validate(model, val_loader, criterion, device)
         
         # Print results
-        print(f"\n📊 Epoch {epoch+1} Results:")
+        print(f"\nEpoch {epoch+1} Results:")
         print(f"  Train Loss: {train_loss:.4f} | Train Acc: {train_acc:.2f}%")
         print(f"  Val Loss:   {val_loss:.4f} | Val Acc:   {val_acc:.2f}%")
         
@@ -194,10 +202,10 @@ def main():
         if val_acc > best_val_acc:
             best_val_acc = val_acc
             torch.save(model.state_dict(), "best_model.pth")
-            print(f"  ✅ Saved best model (val_acc: {val_acc:.2f}%)")
+            print(f"  Saved best model (val_acc: {val_acc:.2f}%)")
     
     print("\n" + "="*70)
-    print("✅ TRAINING COMPLETE!")
+    print("TRAINING COMPLETE!")
     print("="*70)
     print(f"Best Validation Accuracy: {best_val_acc:.2f}%")
     print(f"Model saved to: best_model.pth")
@@ -208,9 +216,9 @@ if __name__ == "__main__":
     try:
         main()
     except KeyboardInterrupt:
-        print("\n\n⚠️  Training interrupted by user.")
+        print("\n\nTraining interrupted by user.")
     except Exception as e:
-        print(f"\n❌ Error: {e}")
+        print(f"\nError: {e}")
         print("\nMake sure:")
         print("  1. You've run metadata.py to create metadata_final.csv")
         print("  2. Images are in data/images/ folder")

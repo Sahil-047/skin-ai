@@ -6,7 +6,7 @@ import torchvision.transforms as T
 import torch
 
 class SkinDataset(Dataset):
-    def __init__(self, csv_path, img_dir, transform=None):
+    def __init__(self, csv_path, img_dir, transform=None, non_skin_dir=None, dermnet_dir=None):
         """
         Args:
             csv_path (str): Path to metadata_final.csv
@@ -16,11 +16,13 @@ class SkinDataset(Dataset):
         self.data = pd.read_csv(csv_path)
         self.img_dir = img_dir
         self.transform = transform
+        self.non_skin_dir = non_skin_dir
+        self.dermnet_dir = dermnet_dir
 
         # Clean up possible missing or invalid rows
         self.data = self.data.dropna(subset=["image", "label_id"])
         self.data["image"] = self.data["image"].astype(str)
-        print(f"✅ Loaded {len(self.data)} entries from {csv_path}")
+        print(f"Loaded {len(self.data)} entries from {csv_path}")
 
     def __len__(self):
         return len(self.data)
@@ -28,12 +30,21 @@ class SkinDataset(Dataset):
     def __getitem__(self, idx):
         row = self.data.iloc[idx]
         img_name = f"{row['image']}.jpg" if not row['image'].endswith('.jpg') else row['image']
-        img_path = os.path.join(self.img_dir, img_name)
+        # Choose directory based on condition
+        dx = str(row.get('dx', '')).lower()
+        if dx == 'non_skin' and self.non_skin_dir:
+            img_path = os.path.join(self.non_skin_dir, img_name)
+        elif dx == 'acne' and self.dermnet_dir:
+            img_path = os.path.join(self.dermnet_dir, 'acne', img_name)
+        elif dx == 'athletes_foot' and self.dermnet_dir:
+            img_path = os.path.join(self.dermnet_dir, 'athlete\'s_foot', img_name)
+        else:
+            img_path = os.path.join(self.img_dir, img_name)
 
         try:
             image = Image.open(img_path).convert("RGB")
         except Exception as e:
-            raise FileNotFoundError(f"❌ Could not open image: {img_path}") from e
+            raise FileNotFoundError(f"Could not open image: {img_path}") from e
 
         label = int(row["label_id"])
         age = torch.tensor(row.get("age", 0) if not pd.isna(row.get("age", 0)) else 0, dtype=torch.float32)
