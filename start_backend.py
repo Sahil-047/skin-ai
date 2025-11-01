@@ -28,7 +28,7 @@ import sys
 # ============================================================================
 
 MODEL_PATH = Path("training/best_model.pth")
-NUM_CLASSES = 10 
+NUM_CLASSES = 15 
 IMG_SIZE = 224
 HOST = "0.0.0.0"  # Allow external connections
 PORT = 8000
@@ -37,7 +37,9 @@ PORT = 8000
 CLASS_NAMES = {
     0: 'akiec', 1: 'bcc', 2: 'bkl', 
     3: 'df', 4: 'mel', 5: 'nv', 6: 'vasc',
-    7: 'non_skin', 8: 'acne', 9: 'athletes_foot'
+    7: 'non_skin', 8: 'acne', 9: 'athletes_foot',
+    10: 'cellulitis', 11: 'cold_sores', 12: 'eczema',
+    13: 'fungal_infection', 14: 'heat_rash'
 }
 
 CLASS_DESCRIPTIONS = {
@@ -50,7 +52,12 @@ CLASS_DESCRIPTIONS = {
     6: 'Vascular lesions',
     7: 'Non-skin image (e.g., object, background)',
     8: 'Acne vulgaris (common acne)',
-    9: 'Athlete\'s foot (tinea pedis)'
+    9: 'Athlete\'s foot (tinea pedis)',
+    10: 'Cellulitis (bacterial skin infection)',
+    11: 'Cold sores (herpes simplex)',
+    12: 'Eczema (atopic dermatitis)',
+    13: 'Fungal infection (tinea)',
+    14: 'Heat rash (prickly heat)'
 }
 
 
@@ -187,8 +194,8 @@ def load_model():
     try:
         print("🔧 Loading model...")
         
-        # Create ResNet18 model
-        model = models.resnet18(weights=None)
+        # Create ResNet50 model (matches train_improved.py)
+        model = models.resnet50(weights=None)
         num_features = model.fc.in_features
         model.fc = nn.Linear(num_features, NUM_CLASSES)
         
@@ -197,10 +204,12 @@ def load_model():
             state_dict = torch.load(MODEL_PATH, map_location=device)
             model.load_state_dict(state_dict)
             print(f"✅ Model loaded from {MODEL_PATH}")
+            print(f"   Architecture: ResNet50")
+            print(f"   Parameters: {sum(p.numel() for p in model.parameters())/1e6:.1f}M")
         else:
             # Use pretrained weights as fallback
             print("⚠️  No custom model found, using pretrained weights")
-            model = models.resnet18(weights='IMAGENET1K_V1')
+            model = models.resnet50(weights='IMAGENET1K_V2')
             model.fc = nn.Linear(num_features, NUM_CLASSES)
         
         model = model.to(device)
@@ -542,7 +551,7 @@ async def predict(
                 "top3_predictions": top3_predictions
             },
             "metadata": {
-                "model": "ResNet18",
+                "model": "ResNet50",
                 "device": str(device),
                 "image_size": f"{IMG_SIZE}x{IMG_SIZE}",
                 "gradcam_included": gradcam_overlay is not None,
@@ -646,9 +655,10 @@ def main():
     print("="*70)
     print("SKIN DISEASE CLASSIFICATION API")
     print("="*70)
-    print("Model: ResNet18 (10 classes)")
-    print("Classes: akiec, bcc, bkl, df, mel, nv, vasc, non_skin, acne, athletes_foot")
+    print("Model: ResNet50 (15 classes)")
+    print("Classes: akiec, bcc, bkl, df, mel, nv, vasc, non_skin, acne, athletes_foot, cellulitis, cold_sores, eczema, fungal_infection, heat_rash")
     print("Features: Skin detection, Confidence filtering, Grad-CAM")
+    print("Training: Weighted loss for class imbalance")
     print("="*70)
     print(f"Starting server on http://{HOST}:{PORT}")
     print("="*70)

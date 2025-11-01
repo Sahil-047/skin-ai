@@ -14,7 +14,7 @@ from transformer import get_train_transforms, get_val_transforms
 from pathlib import Path
 
 
-def create_model(num_classes=10, pretrained=True):
+def create_model(num_classes=15, pretrained=True):
     """Create a ResNet18 model for skin disease classification."""
     model = models.resnet18(pretrained=pretrained)
     
@@ -97,7 +97,7 @@ def main():
     
     # Configuration (paths relative to repo root, robust to CWD)
     repo_root = Path(__file__).resolve().parents[1]
-    CSV_PATH = str((repo_root / "data" / "expanded_with_athletes_foot.csv").resolve())
+    CSV_PATH = str((repo_root / "data" / "final_expanded_dataset.csv").resolve())
     IMG_DIR = str((repo_root / "data" / "images").resolve())
     NON_SKIN_DIR = str((repo_root / "data" / "non_skin").resolve())
     DERMNET_DIR = str((repo_root / "data" / "dermnet_images").resolve())
@@ -163,8 +163,8 @@ def main():
     )
     
     # Create model
-    print("\nCreating model (ResNet18, 10 classes)...")
-    model = create_model(num_classes=10, pretrained=True)
+    print("\nCreating model (ResNet18, 15 classes)...")
+    model = create_model(num_classes=15, pretrained=True)
     model = model.to(device)
     
     # Loss and optimizer
